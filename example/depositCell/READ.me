@@ -1,1 +1,167 @@
 mpirun -np 1 lmp_mpi < in.lmp4cell
+
+
+Certainly! Here's a line-by-line annotation of the provided LAMMPS script:
+
+```
+# sample surface deposition script for molecules
+```
+This is a comment that describes the purpose of the script.
+
+```
+units		lj
+```
+Sets the unit system to LJ (Lennard-Jones) units, which are commonly used in molecular simulations.
+
+```
+atom_style      bond
+```
+Defines the atom style as "bond", indicating that the system contains atoms that are connected by bonds.
+
+```
+boundary        p p f
+```
+Sets the boundary conditions for the simulation. "p p f" stands for periodic in the X and Y directions, and fixed (non-periodic) in the Z direction.
+
+```
+lattice		fcc 1.0
+```
+Creates a face-centered cubic (FCC) lattice with a lattice constant of 1.0.
+
+```
+region          box block 0 5 0 5 0 10
+```
+Defines a simulation region called "box" that spans from (0,0,0) to (5,5,10). It is a rectangular box with dimensions 5x5x10.
+
+```
+create_box      3 box bond/types 1 extra/bond/per/atom 1
+```
+Creates a simulation box of type 3 (molecules) using the "box" region. Specifies that there is 1 bond type and each atom has 1 extra bond.
+
+```
+region		substrate block INF INF INF INF INF 3
+```
+Defines a region called "substrate" that extends infinitely in the X, Y, and Z directions but is limited to a thickness of 3 in the Z direction.
+
+```
+create_atoms	1 region substrate
+```
+Creates atoms of type 1 in the "substrate" region. These atoms will be part of the substrate.
+
+```
+pair_style	lj/cut 2.5
+```
+Sets the pair style to Lennard-Jones with a cutoff of 2.5.
+
+```
+pair_coeff	* * 1.0 1.0
+```
+Sets the pairwise interaction coefficients for all atom types to 1.0 and 1.0 for the LJ potential.
+
+```
+pair_coeff	1 2 1.0 1.0 5.0
+```
+Sets the pairwise interaction coefficients between atom types 1 and 2 to 1.0, 1.0, and 5.0 for the LJ potential.
+
+```
+mass		* 1.0
+```
+Sets the mass of all atom types to 1.0.
+
+```
+bond_style	harmonic
+```
+Sets the bond style to harmonic, indicating that bond interactions are described by a harmonic potential.
+
+```
+bond_coeff      1 5.0 1.0
+```
+Sets the bond interaction coefficients for bond type 1 to 5.0 and 1.0 for the harmonic potential.
+
+```
+neigh_modify	delay 0
+```
+Sets the neighbor list build delay to 0, meaning the neighbor list is built every timestep.
+
+```
+group		addatoms type 2
+```
+Creates a group called "addatoms" containing all atoms of type 2.
+
+```
+region          mobile block 0 5 0 5 2 INF
+```
+Defines a region called "mobile" that spans from (0,0,2) to (5,5,inf). It is a rectangular box with dimensions 5x5xinf, excluding the topmost layer.
+
+```
+group		mobile region mobile
+```
+Creates a group called "mobile" containing all atoms in the "mobile" region
+
+.
+
+```
+compute		add addatoms temp
+```
+Defines a compute called "add" that calculates the temperature of the "addatoms" group.
+
+```
+compute_modify	add dynamic/dof yes extra/dof 0
+```
+Modifies the "add" compute to include additional degrees of freedom for the atoms in the group "addatoms".
+
+```
+fix		1 addatoms nve
+```
+Applies a fix called "1" to the "addatoms" group, performing a constant energy molecular dynamics (NVE) simulation.
+
+```
+fix		2 mobile langevin 0.1 0.1 0.1 587283
+```
+Applies a Langevin thermostat fix to the "mobile" group, which controls the temperature of the atoms using a stochastic heat bath. The damping coefficient, random seed, and temperature are specified.
+
+```
+fix		3 mobile nve
+```
+Applies a fix called "3" to the "mobile" group, performing a constant energy molecular dynamics (NVE) simulation.
+
+```
+molecule        dimer molecule.dimer
+```
+Defines a molecule called "dimer" using the data file "molecule.dimer" as input.
+
+```
+region          slab block 0 5 0 5 8 9
+```
+Defines a region called "slab" that spans from (0,0,8) to (5,5,9). It is a rectangular box with dimensions 5x5x1, representing the surface where deposition will occur.
+
+```
+fix		4 addatoms deposit 100 0 100 12345 region slab near 1.0 &
+                mol dimer vz -1.0 -1.0
+```
+Applies a fix called "4" to the "addatoms" group, performing deposition of 100 molecules of the "dimer" type near the surface defined by the "slab" region. The molecules are deposited with a vertical velocity of -1.0.
+
+```
+fix		5 addatoms wall/reflect zhi EDGE
+```
+Applies a fix called "5" to the "addatoms" group, reflecting any atoms that hit the upper boundary of the simulation box (zhi).
+
+```
+thermo_style	custom step atoms temp epair etotal press
+```
+Specifies the output style for the thermodynamic properties to be printed during the simulation. The specified properties include the simulation step, number of atoms, temperature, pair energy, total energy, and pressure.
+
+```
+thermo          100
+```
+Sets the frequency at which thermodynamic output is printed to every 100 timesteps.
+
+```
+thermo_modify	temp add lost/bond ignore lost warn
+```
+Modifies the thermodynamic output to include the temperature, and it will also display warnings if any bonds are lost during the simulation.
+
+```
+run             10000
+```
+Runs the simulation for 10000 timesteps.
