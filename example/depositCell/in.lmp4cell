@@ -49,20 +49,22 @@ comm_modify cutoff 10
 
 # use fix SRD to push small particles out from inside big ones
 
-timestep	0.02
+timestep	0.0002
 
-fix		1 all nve
+#fix		1 all nve
 #fix 2 cells fcm 1
 #fix 2 p1 addforce 1.22e-5 0 1.242e-5
 #fix 3 p2 addforce 1.22e-5 0 -1.242e-5
 #fix 3 all wall/region channel harmonic 1e-2 2 2
 #fix 3 all wall/region inlet harmonic 1e-3 13 13
 #fix 3 all indent 0.1 cylinder z 37.5 37.5 v_radius side in
-molecule singleRBC molecule.rbc 
-region RBC_zone block 0 20 0 20 0 20 side in
-fix 2 cells deposit 20 0 5 12345 mol singleRBC region RBC_zone near 2 
+molecule singleRBC rbc.molecule 
+region RBC_zone block 0 500 0 500 0 1000 side in
+# fix 2 cells deposit 20 0 5 12345 mol singleRBC region RBC_zone id max near 20 gaussian 250 250 500 100
+fix 2 cells deposit 20 0 5 12345 mol singleRBC region RBC_zone id max gaussian 250 250 500 20 rate 4 near 4
 # fix 2 cells deposit 20 1 5 12345 region RBC_zone near 2 
-fix 3 all viscous 0.01
+
+#fix 3 all viscous 0.01
 #fix 5 all gravity 0.001 vector 0 0 1
 #fix 6 all wall/harmonic zhi 223 1e-2 2 2
 #fix 4 all langevin 1e-8 1e-8 10 2383487
@@ -87,7 +89,7 @@ fix 3 all viscous 0.01
 #thermo_modify	temp tbig
 #thermo_modify   lost ignore
 # reset (temp) defined in thermo_style as (tbig)
-thermo		5000
+thermo		5
 #run             1000000
 # output thermodynamic infor every 100 timesteps
 #dump            1 all xyz 5000 dump.rbc.xyz
