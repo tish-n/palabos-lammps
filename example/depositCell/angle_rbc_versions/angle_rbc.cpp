@@ -405,7 +405,7 @@ void AngleRbc::compute(int eflag, int vflag)
   tagint nmolecule_new = 0;
   for (int i = 0; i < nlocal; i++){
     max = MAX(max,molecule[i]); 
-    std::cout << "molecule[i]: " << molecule[i] << std::endl;
+    // std::cout << "molecule[i]: " << molecule[i] << std::endl;
   }
   std::cout << "***** nmolecule: "<< nmolecule << " nmolecule_new: " << nmolecule_new << std::endl;
   MPI_Allreduce(&max,&nmolecule_new,1,MPI_LMP_TAGINT,MPI_MAX,world);
