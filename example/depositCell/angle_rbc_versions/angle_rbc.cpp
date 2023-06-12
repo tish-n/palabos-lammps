@@ -23,9 +23,12 @@
 #include "math_const.h"
 #include "memory.h"
 #include "error.h"
+#include "fix_deposit.h"
+#include "fix_deposit.cpp"
 #include "update.h"//debug only
 #include <vector>
 #include <set>
+#include <iostream>
 
 using namespace LAMMPS_NS;
 using namespace MathConst;
@@ -94,7 +97,7 @@ void AngleRbc::init_style()
   memory->create(maxxyz,nmolecule+1,3,"angle:maxxyz");
   memory->create(MINxyz,nmolecule+1,3,"angle:MINxyz");
   memory->create(minxyz,nmolecule+1,3,"angle:minxyz");
-//   check_crossing(crossFlag);
+  // check_crossing(crossFlag);
   for (int j=1;j<nmolecule+1;j++)
   { if (((crossFlag[j][0]) && (domain->xperiodic)) || ((crossFlag[j][1]) && (domain->yperiodic))|| ((crossFlag[j][2]) && (domain->zperiodic)))
       if (comm->me ==0) error->warning(FLERR,"Cell is straddled across the boundary or the cell size is bigger than half of the box side, check your initial input files\n");
@@ -392,19 +395,57 @@ void AngleRbc::compute(int eflag, int vflag)
   int newton_bond = force->newton_bond;
   tagint g1,g2,g3; //global id for atoms 
   int l1,l2,l3; //local id for atoms 
+  // int n;
   double x1[3],x2[3],x3[3];
   // each processor has nanglelist, see neighbor.cpp
   a0=0.0;
   //computeAreaVol(At,Vt,crossFlag);
+    // XXX
+  tagint max = 0;
+  tagint nmolecule_new = 0;
+  for (int i = 0; i < nlocal; i++){
+    max = MAX(max,molecule[i]); 
+    std::cout << "molecule[i]: " << molecule[i] << std::endl;
+  }
+  std::cout << "***** nmolecule: "<< nmolecule << " nmolecule_new: " << nmolecule_new << std::endl;
+  MPI_Allreduce(&max,&nmolecule_new,1,MPI_LMP_TAGINT,MPI_MAX,world);
+  // std::cout << "***** nmolecule "<< nmolecule << std::endl;
+  if (nmolecule_new > nmolecule)
+  {// check if grow will copy the value of the array
+    std::cout<<"---------- inside nmolecule_new: "<< nmolecule_new << " nmolecule: " << nmolecule <<std::endl;
+    double At_one = At[1]; // save a copy 
+    // std::cout<<"---------- after AT_one = At[1]"<<nmolecule<<std::endl;
+    double Vt_one = Vt[1];
+    // std::cout<<"---------- after Vt_one = Vt[1]"<<nmolecule<<std::endl;
+
+    nmolecule = nmolecule_new;
+    memory->grow(At,nmolecule+1,"angle:At");
+    memory->grow(Vt,nmolecule+1,"angle:Vt");
+    memory->grow(crossFlag,nmolecule+1,3,"angle:crossFlag");
+    memory->grow(MAXxyz,nmolecule+1,3,"angle:MAXxyz");
+    memory->grow(maxxyz,nmolecule+1,3,"angle:maxxyz");
+    memory->grow(MINxyz,nmolecule+1,3,"angle:MINxyz");
+    memory->grow(minxyz,nmolecule+1,3,"angle:minxyz");
+    for (int i=1;i<nmolecule+1;i++)
+    {
+      At[i]=At_one;
+      Vt[i]=Vt_one;
+    }
+  }
   //for (int i = 0; i < nlocal; i++) domain->unmap(x[i],image[i],x1);
+  
+  // int maxmolecules = getNMolecules();
+  // std::cout << "***** nmolecule "<< maxmolecules << std::endl;
   computeAreaVol(At,Vt);
-//   check_crossing(crossFlag);
+  std::cout << "++++ after computeAreaVol" << std::endl;
+  check_crossing(crossFlag);
   /*if (comm->me == 0) {
     for (int j=1;j<nmolecule+1;j++)
         printf("%d molecule cross: %d %d %d\n", j, crossFlag[j][0],crossFlag[j][1],crossFlag[j][2]);
   }*/
   bigint ntimestep;
   ntimestep = update->ntimestep;
+  std::cout << "***** nmolecule "<< nmolecule << " timestep: " << ntimestep << std::endl;
   for (n = 0; n < nanglelist; n++) {
     i1 = anglelist[n][0];
     i2 = anglelist[n][1];
@@ -465,19 +506,20 @@ void AngleRbc::compute(int eflag, int vflag)
     cnt[0]=0.333333333*(x[i1][0] + x[i2][0] + x[i3][0]);
     cnt[1]=0.333333333*(x[i1][1] + x[i2][1] + x[i3][1]);
     cnt[2]=0.333333333*(x[i1][2] + x[i2][2] + x[i3][2]);
-
-    // if (xperiodic){ 
-    //     if ((crossFlag[molId][0]) && (cnt[0]<domain->xprd_half))
-    //         cnt[0] += domain->xprd;    
-    // }
-    // if (yperiodic){ 
-    //     if ((crossFlag[molId][1]) && (cnt[1]<domain->yprd_half))
-    //         cnt[1] += domain->yprd;    
-    // }
-    // if (zperiodic){ 
-    //     if ((crossFlag[molId][2]) && (cnt[2]<domain->zprd_half))
-    //         cnt[2] += domain->zprd;    
-    // }
+    
+    // XXX  commented out on 06/06/2023
+    if (xperiodic){ 
+        if ((crossFlag[molId][0]) && (cnt[0]<domain->xprd_half)) // crossFlag[molId][0]
+            cnt[0] += domain->xprd;    
+    }
+    if (yperiodic){ 
+        if ((crossFlag[molId][1]) && (cnt[1]<domain->yprd_half))
+            cnt[1] += domain->yprd;    
+    }
+    if (zperiodic){ 
+        if ((crossFlag[molId][2]) && (cnt[2]<domain->zprd_half))
+            cnt[2] += domain->zprd;    
+    }
 
 
     /*if (comm->me==0){
@@ -576,7 +618,8 @@ void AngleRbc::compute(int eflag, int vflag)
                          
      // } //if(i1<nlocal)
   } // nanglelist
-  //for (int i = 0; i < nlocal; i++) domain->remap(x[i],image[i]);
+  //for (int i = 0; i < nlocal; i++) domain->remap(x[i],image[i]);'
+  std::cout << "im here " << i1 << " " << i2 << " " << i3  << std::endl;
 }
 
 /* ---------------------------------------------------------------------- */

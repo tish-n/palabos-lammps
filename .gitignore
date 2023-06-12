@@ -1,3 +1,4 @@
 example/depositCell/dump.rbc.xyz
 example/depositCell/log.lammps
 example/depositCell/runScript.sh
+example/depositCell/lmp_mpi
