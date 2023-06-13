@@ -90,14 +90,14 @@ void AngleRbc::init_style()
   
   memory->create(At,nmolecule+1,"angle:At");
   memory->create(Vt,nmolecule+1,"angle:Vt");
-  memory->create(at,nmolecule+1,"angle:At");
-  memory->create(vt,nmolecule+1,"angle:Vt");
+  memory->create(at,nmolecule+1,"angle:at");
+  memory->create(vt,nmolecule+1,"angle:vt");
   memory->create(crossFlag,nmolecule+1,3,"angle:crossFlag");
   memory->create(MAXxyz,nmolecule+1,3,"angle:MAXxyz");
   memory->create(maxxyz,nmolecule+1,3,"angle:maxxyz");
   memory->create(MINxyz,nmolecule+1,3,"angle:MINxyz");
   memory->create(minxyz,nmolecule+1,3,"angle:minxyz");
-  // check_crossing(crossFlag);
+  check_crossing(crossFlag);
   for (int j=1;j<nmolecule+1;j++)
   { if (((crossFlag[j][0]) && (domain->xperiodic)) || ((crossFlag[j][1]) && (domain->yperiodic))|| ((crossFlag[j][2]) && (domain->zperiodic)))
       if (comm->me ==0) error->warning(FLERR,"Cell is straddled across the boundary or the cell size is bigger than half of the box side, check your initial input files\n");
@@ -244,12 +244,16 @@ void AngleRbc::computeAreaVol(double *At, double *Vt, int **crossFlag){
 
 /* ------------------No check on crossing boundary-------------------- */
 void AngleRbc::computeAreaVol(double *At, double *Vt){
-  for (int i = 1; i < nmolecule+1; i++) {
-    At[i] = 0.0;
-    Vt[i] = 0.0;
-    at[i] = 0.0;
-    vt[i] = 0.0;
-  }
+  // for (int i = 1; i < nmolecule+1; i++) {
+  //   At[i] = 0.0;
+  //   Vt[i] = 0.0;
+  //   at[i] = 0.0;
+  //   vt[i] = 0.0;
+  // }
+  std::fill(At+1, At+nmolecule, 0.0);
+  std::fill(Vt+1, Vt+nmolecule, 0.0);
+  std::fill(at+1, at+nmolecule, 0.0);
+  std::fill(vt+1, vt+nmolecule, 0.0); 
   int i1,i2,i3,n,type,molId;
   double delx1,dely1,delz1,delx2,dely2,delz2,delx3,dely3,delz3;
   double xi[3],cnt[3],xi2;
@@ -407,12 +411,12 @@ void AngleRbc::compute(int eflag, int vflag)
     max = MAX(max,molecule[i]); 
     // std::cout << "molecule[i]: " << molecule[i] << std::endl;
   }
-  std::cout << "***** nmolecule: "<< nmolecule << " nmolecule_new: " << nmolecule_new << std::endl;
+  // std::cout << "***** nmolecule: "<< nmolecule << " nmolecule_new: " << nmolecule_new << std::endl;
   MPI_Allreduce(&max,&nmolecule_new,1,MPI_LMP_TAGINT,MPI_MAX,world);
   // std::cout << "***** nmolecule "<< nmolecule << std::endl;
   if (nmolecule_new > nmolecule)
   {// check if grow will copy the value of the array
-    std::cout<<"---------- inside nmolecule_new: "<< nmolecule_new << " nmolecule: " << nmolecule <<std::endl;
+    std::cout<< " ----- nmolecule: " << nmolecule << " nmolecule_new: "<< nmolecule_new <<std::endl;
     double At_one = At[1]; // save a copy 
     // std::cout<<"---------- after AT_one = At[1]"<<nmolecule<<std::endl;
     double Vt_one = Vt[1];
@@ -421,6 +425,8 @@ void AngleRbc::compute(int eflag, int vflag)
     nmolecule = nmolecule_new;
     memory->grow(At,nmolecule+1,"angle:At");
     memory->grow(Vt,nmolecule+1,"angle:Vt");
+    memory->grow(at,nmolecule+1,"angle:at");
+    memory->grow(vt,nmolecule+1,"angle:vt");
     memory->grow(crossFlag,nmolecule+1,3,"angle:crossFlag");
     memory->grow(MAXxyz,nmolecule+1,3,"angle:MAXxyz");
     memory->grow(maxxyz,nmolecule+1,3,"angle:maxxyz");
@@ -434,10 +440,9 @@ void AngleRbc::compute(int eflag, int vflag)
   }
   //for (int i = 0; i < nlocal; i++) domain->unmap(x[i],image[i],x1);
   
-  // int maxmolecules = getNMolecules();
-  // std::cout << "***** nmolecule "<< maxmolecules << std::endl;
+ 
   computeAreaVol(At,Vt);
-  std::cout << "++++ after computeAreaVol" << std::endl;
+  // std::cout << "++++ after computeAreaVol" << std::endl;
   check_crossing(crossFlag);
   /*if (comm->me == 0) {
     for (int j=1;j<nmolecule+1;j++)
@@ -445,7 +450,7 @@ void AngleRbc::compute(int eflag, int vflag)
   }*/
   bigint ntimestep;
   ntimestep = update->ntimestep;
-  std::cout << "***** nmolecule "<< nmolecule << " timestep: " << ntimestep << std::endl;
+  std::cout << " nmolecule "<< nmolecule <<" nmolecule_new: "<< nmolecule_new << " timestep: " << ntimestep << std::endl;
   for (n = 0; n < nanglelist; n++) {
     i1 = anglelist[n][0];
     i2 = anglelist[n][1];
@@ -619,7 +624,7 @@ void AngleRbc::compute(int eflag, int vflag)
      // } //if(i1<nlocal)
   } // nanglelist
   //for (int i = 0; i < nlocal; i++) domain->remap(x[i],image[i]);'
-  std::cout << "im here " << i1 << " " << i2 << " " << i3  << std::endl;
+  // std::cout << "im here " << i1 << " " << i2 << " " << i3  << std::endl;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -722,7 +727,8 @@ void AngleRbc::write_restart(FILE *fp)
 
 void AngleRbc::read_restart(FILE *fp)
 {
-  allocate();
+  // allocate();
+  if (!allocated) allocate();
 
   if (comm->me == 0) {
     fread(&Cq[1],sizeof(double),atom->nangletypes,fp);

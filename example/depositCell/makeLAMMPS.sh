@@ -1,5 +1,7 @@
 #!/bin/sh 
 
+rm -rf lmp_mpi
+
 cp -rf /home/tishn/gfork/palabos-lammps/example/depositCell/angle_rbc_versions/angle_rbc.cpp /home/tishn/test/insituBloodFlow/src/lammps/src/
 cd /home/tishn/test/insituBloodFlow/src/lammps/src/
 make mpi -j 4
